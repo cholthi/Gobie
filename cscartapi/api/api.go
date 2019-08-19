@@ -17,7 +17,7 @@ const BASE_URL = "https://agoro.co/api.php"
 var errorCscartResponse error = errors.New("Error from API:")
 var errorInvalidMethod error = errors.New("Error: Invalid Method")
 
-var client *c.Client = c.NewClient("chol@dmarkmobile.com", "r476310Y887705A4648V2o7BZ3R818cP")
+var client *c.Client = c.NewClient("", "")
 
 type CscartResponse struct {
 	Data interface{}
