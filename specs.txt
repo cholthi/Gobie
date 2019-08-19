@@ -1,0 +1,22 @@
+Features
+- Menu
+* Book meal
+* Order meal
+* Book for friend
+* Donate meal
+
+Book meal
+
+lets you book a meal. either breakfast, lunch or supper.
+
+Order meal
+
+Choose from available food items.
+
+Book for friend
+
+Lets you book for a friend who is hungry
+
+Donate meal
+
+Lets you donate meal to a friend.
