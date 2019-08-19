@@ -72,7 +72,7 @@ func main() {
 		products = append(products, product)
 	})
 
-	categorycollector.Visit("https://www.jumia.ug/" + category)
+	categorycollector.Visit("" + category)
 	file, err := os.OpenFile("scrapped.json", os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		panic(err)
