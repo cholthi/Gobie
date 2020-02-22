@@ -100,7 +100,7 @@ func worker(id int, jobs <-chan Work, results chan<- api.CscartResponse) {
 
 func prepareOptions(w Work, res *api.CscartResponse, name string) string {
 	//var j map[string]interface{} = make(map[string]interface{})
-	data, ok := res.Data.(map[string]interface{})
+	data, ok := res.Data.(map[string]interface{}) //uhh!
 	if !ok {
 		log.Fatal("error converting data")
 	}
@@ -124,14 +124,15 @@ func prepareOptions(w Work, res *api.CscartResponse, name string) string {
 func prepareBody(work Work) string {
 	var params map[string]interface{} = make(map[string]interface{})
 	price, _ := strconv.ParseFloat(work.Amount, 32)
-	params["price"] = ((float32(price)) + (0.70 * float32(price))) // convert to primary currency
+
+	params["price"] = ((price * 1) + (price * 0.70))
 	params["company_id"] = vendor
 	params["product"] = work.Product
 	params["full_description"] = work.Description
-	params["list_price"] = work.Amount
+	params["list_price"] = price * 1
 	params["amount"] = 20
 	params["main_category"] = category
-	params["category_ids"] = []string{category, "100"}
+	params["category_ids"] = []string{category}
 	//params["product_features"] = map[string]map[string]string{"18": {"feature_type": "E", "value": "Huawei"}}
 	if len(work.Imagepairs) > 0 {
 		params["main_pair"] = map[string]map[string]string{"detailed": {"http_image_path": work.Imagepairs[0], "image_path": work.Imagepairs[0]}}

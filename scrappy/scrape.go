@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/gocolly/colly"
 )
@@ -23,15 +25,18 @@ type product struct {
 var products []product = []product{}
 
 func main() {
-
+	rand.Seed(time.Now().UTC().UnixNano())
 	closeHandler()
 	var category string
 
 	flag.StringVar(&category, "category", "", "Product category to scrap on Jumia")
 	flag.Parse()
 
-	categorycollector := colly.NewCollector(colly.UserAgent("Mozilla/5.0 (X11; Linux i586; rv:63.0) Gecko/20100101 Firefox/63.0"))
-	productcollector := colly.NewCollector(colly.UserAgent("Mozilla/5.0 (X11; Linux i586; rv:63.0) Gecko/20100101 Firefox/63.0"))
+	ua := getUserAgent()
+	categorycollector := colly.NewCollector(colly.UserAgent(ua))
+	//categorycollector.SetProxy("https://103.215.157.53:58338/")
+	productcollector := colly.NewCollector(colly.UserAgent(ua))
+	//productcollector.SetProxy("https://103.192.38.103:8082/")
 
 	//lets scrap them category pages
 
@@ -50,29 +55,44 @@ func main() {
 		}
 	})
 
-	productcollector.OnHTML("main.osh-container", func(e *colly.HTMLElement) {
+	productcollector.OnHTML("main.-pvs div.row section.col12", func(e *colly.HTMLElement) {
 		product := product{}
-		product.Name = e.ChildText("section.sku-detail div.details-wrapper div.details span h1.title")
-		product.Price = e.ChildAttr("section.sku-detail div.details-wrapper div.details div.details-footer div.price-box div span.price span:nth-of-type(2)", "data-price")
-		e.ForEach("section.sku-detail div.media div.thumbs-wrapper div#thumbs-slide a", func(index int, l *colly.HTMLElement) {
+		product.Name = e.ChildText("div.row div.col10 div.-j-bet div h1.-pts")
+		price := e.ChildText("div.row div.col10 div.-phs div.-mtxs span.-fs24")
+		if ugx := strings.Contains(price, "UGX"); ugx {
+			price = strings.Replace(price, "UGX", "", -1)
+			price = strings.Replace(price, "Uganda", "South Sudan", -1)
+			price = strings.Replace(price, "Jumia", "Agoro", -1)
+			price = strings.Replace(price, ",", "", -1)
+			price = strings.Trim(price, " ")
+			if isrange := strings.Contains(price, "-"); isrange {
+				price = strings.Split(price, "-")[0]
+				price = strings.Trim(price, " ")
+			}
+		}
+		product.Price = price
+		e.ForEach("div.row div.col6 div.-pbs div#imgs a", func(index int, l *colly.HTMLElement) {
 			src := l.Attr("href")
 			product.ImagePairs = append(product.ImagePairs, src)
 		})
 		//Options for products
-		option := make(map[string][]string)
-		option_name := e.ChildText("section.sku-detail div.details-wrapper div.details div.detail-features div.sizes div.list div.title")
+		option := make(map[string][]string, 0)
+		option_name := e.ChildText("section.col12 div.row div.col10 form div.-mhxs span")
 		option[option_name] = make([]string, 0)
-		e.ForEach("section.sku-detail div.details-wrapper div.details div.detail-features div.sizes div.list span.sku-size", func(i int, e *colly.HTMLElement) {
+		e.ForEach("section.col12 div.row div.col10 form div.var-w label", func(i int, e *colly.HTMLElement) {
 			option[option_name] = append(option[option_name], e.Text)
 		})
+
 		product.Options = option
-		desc := e.DOM.Find("section div.osh-tabs div#productDescriptionTab div.product-description")
-		html, _ := desc.Html()
+		parent := e.DOM.ParentsUntil("div.row main.-pvs")
+		html, _ := parent.Find("div.row div.col12 div.card div.markup").Html()
+		//html, _ := desc.Html()
 		product.Desc = strings.Replace(html, "Jumia", "Agoro", -1)
+		product.Desc = strings.Replace(html, "Kenya", "South Sudan", -1)
 		products = append(products, product)
 	})
 
-	categorycollector.Visit("" + category)
+	categorycollector.Visit("https://www.jumia.ug" + category)
 	file, err := os.OpenFile("scrapped.json", os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		panic(err)
@@ -104,4 +124,18 @@ func closeHandler() {
 		fmt.Println("Shuting Down now...")
 		os.Exit(0)
 	}()
+}
+
+func getUserAgent() string {
+	ua := []string{
+		"Mozilla/5.0 (X11; U; Linux Core i7-4980HQ; de; rv:32.0; compatible; JobboerseBot; http://www.jobboerse.com/bot.htm) Gecko/20100101 Firefox/38.0",
+		"Apache/2.4.34 (Ubuntu) OpenSSL/1.1.1 (internal dummy connection)",
+		"Mozilla/5.0 (X11; U; Linux Core i7-4980HQ; de; rv:32.0; compatible; JobboerseBot; https://www.jobboerse.com/bot.htm) Gecko/20100101 Firefox/38.0",
+		"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/74.0.3729.157 Safari/537.36",
+		"Mozilla/5.0 (X11; U; Linux i686; pt-BR; rv:1.9.0.15) Gecko/2009102815 Ubuntu/9.04 (jaunty) Firefox/3.0.15",
+		"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36",
+	}
+
+	randomidx := rand.Intn(len(ua) - 1)
+	return ua[randomidx]
 }

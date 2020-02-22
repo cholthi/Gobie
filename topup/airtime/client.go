@@ -4,11 +4,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/xml"
 	"fmt"
-	"io"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"time"
@@ -21,37 +18,41 @@ const DEFAULT_HOST = ""
 const VERSION = "1.0"
 
 var endpoint string
+var Client *client
 
 //Client interacts with the api server and creates response objects
-type Client struct {
+type client struct {
 	BaseURL    string
 	Password   string
 	HTTPClient http.Client
 	Logger     Log
 }
 
+func init() {
+	Client = NewClient("/var/log/airtime.log")
+}
+
 type Log func(...interface{})
 
-func (c *Client) log(v ...interface{}) {
+func (c *client) log(v ...interface{}) {
 	if c.Logger != nil {
 		c.Logger(v...)
 	}
 }
-func (c *Client) doRequest(ctx context.Context, res interface{}, options map[string]interface{}) error {
-	msisdn := options["msisdn"]
-	amount := options["amount"]
-	endpoint := options["endpoint"]
-	c.log("Calling method:", endpoint)
-	req := c.prepareReq(msisdn.(string), amount.(float64))
-	body := c.toXML(*req)
-
+func (c *client) doRequest(ctx context.Context, endpoint Endpoint) (interface{}, error) {
+	//c.log("Calling method:", endpoint)
+	body, err := endpoint.PrepareRequest()
+	if err != nil {
+		c.log("Error marshalling request", err)
+	}
 	// make context cancellable http call
-	url := c.Endpoint(endpoint.(string))
+	url := c.Endpoint(endpoint.GetEndpoint())
 	bf := []byte(body)
 	httpreq, err := http.NewRequest("POST", url, bytes.NewBuffer(bf))
+	httpreq.Header.Set("Content-Type", "text/xml")
 	if err != nil {
 		c.log("Error:", err)
-		return err
+		return nil, err
 	}
 	httpreq = httpreq.WithContext(ctx)
 
@@ -70,32 +71,27 @@ func (c *Client) doRequest(ctx context.Context, res interface{}, options map[str
 	select {
 	case <-ctx.Done():
 		<-ch
-		return ctx.Err()
+		return nil, ctx.Err()
 	case resp := <-ch:
 		close(ch)
-		var b bytes.Buffer
-		if _, err := io.Copy(&b, resp.Body); err != nil {
-			return err
-		}
-		c.log("API resp for ", url, ":", b)
+		//c.log("API resp for ", url, ":\n", b.String())
 		// ATTENTION!
-		topupres := c.prepareResp(b.String())
-		value, _ := res.(*TopupResponse)
-		value.Reference = topupres.Reference
-		value.ResultCode = topupres.ResultCode
-		value.Status = topupres.Status
-		value.SenderMsisdn = topupres.SenderMsisdn
-		value.Balance = topupres.Balance
-
-		if err := resp.Body.Close(); err != nil {
-			return err
+		res, err := endpoint.PrepareResponse(*resp)
+		if err != nil {
+			c.log("Error Unmarshalling Response", err)
 		}
+		//value := new(TopupResponse)
+		//value.Reference = topupres.Reference
+		//value.ResultCode = topupres.ResultCode
+		//value.Status = topupres.Status
+		//value.SenderMsisdn = topupres.SenderMsisdn
+		//value.Balance = topupres.Balance
 
-		return nil
+		return res, nil
 
 	}
 }
-func (c *Client) Endpoint(endpoint string) string {
+func (c *client) Endpoint(endpoint string) string {
 	base := c.BaseURL
 	if c.BaseURL == "" {
 		base = DEFAULT_HOST
@@ -103,107 +99,92 @@ func (c *Client) Endpoint(endpoint string) string {
 	return fmt.Sprintf("%s/%s", base, endpoint)
 }
 
-func (c *Client) toXML(r interface{}) string {
-	header := &bytes.Buffer{}
-	header.Write([]byte(`<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"xmlns:ext="http://external.interfaces.ers.seamless.com/"><soapenv:Header/><soapenv:Body>`))
-	enc := xml.NewEncoder(header)
-	if err := enc.Encode(r); err != nil {
-		c.log("Error:", err)
-		panic(err)
-	}
-	header.Write([]byte(`</soapenv:Body></soapenv:Envelope>`))
-	c.log("marshalled request:", header.String())
-	return header.String()
-}
-
-func (c *Client) prepareReq(msisdn string, amount float64) *TopUpRequest {
-	timeout := 5 * time.Microsecond
-	user := User{ID: "RES0000059747", Type: "RESELLERUSER", RequestType: "DMark"}
-	user.XMLName = xml.Name{Local: "senderPrincipalId"}
-	ref := randomString(8)
-	context := Context{"webservice", "DMARK", timeout, user, "DM@rk321", ref, "dmark", "dmark topup subscriber account"}
-	account := new(Account)
-	account.XMLName = xml.Name{Local: "senderAccountSpecifier"}
-	account.ID = "211925415377"
-	account.Type = "RESELLER"
-	subscriber := User{XMLName: xml.Name{Local: "topupPrincipalId"}, ID: msisdn, Type: "SUBSCRIBERMSISDN"}
-	sub_account := new(Account)
-	sub_account.XMLName = xml.Name{Local: "topupAccountSpecifier"}
-	sub_account.ID = msisdn
-	sub_account.Type = "AIRTIME"
-	amt := Amount{XMLName: xml.Name{Local: "amount"}, Value: amount}
-
-	var req *TopUpRequest = new(TopUpRequest)
-	req.Context = context
-	req.Amount = amt
-	req.ProductID = "TOPUP_A"
-	req.Sender = user
-	req.SenderAccount = *account
-	req.Subscriber = subscriber
-	req.SubscriberAccount = *sub_account
-
-	return req
-
-}
-
-func (c *Client) prepareResp(b string) *TopupResponse {
-	var resp TopupResponse
-	b = b[83:] // Hard coded xml header length. How did I find this? never mind
-
-	if err := xml.Unmarshal([]byte(b), &resp); err != nil {
-		c.log("Error:", err)
-		return nil
-	}
-	if resp.ResultCode != 0 {
-		var _ ErrorResponse = (*TopupResponse)(nil)
-		return &resp
-	}
-	return &resp
-}
-
-func randomString(len int) string {
-	randomInt := func(min, max int) int {
-		return min + rand.Intn(max-min)
-	}
-	bytes := make([]byte, len)
-	for i := 0; i < len; i++ {
-		bytes[i] = byte(randomInt(65, 90))
-	}
-	return string(bytes)
-}
-
-func (c *Client) ConfigTLS() {
-	cert, err := tls.LoadX509KeyPair("/home/cholthi/certs/cert.pem", "/home/cholthi/certs/key.pem")
+func (c *client) ConfigTLS() {
+	cert, err := tls.LoadX509KeyPair("/home/ubuntu/certs/cert.pem", "/home/ubuntu/certs/key.pem")
 	if err != nil {
 		c.log("Error:", err)
 		panic(err)
 	}
 	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{cert},
+		Certificates:       []tls.Certificate{cert},
+		InsecureSkipVerify: true,
 	}
+	//tlsConfig.InsecureSkipVerify = false
 
-	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	transport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
 	c.HTTPClient.Transport = transport
 
 }
 
-func TopUp(amount float64, msisdn string, result interface{}) error {
-	logger := log.New(os.Stdout, "Airtime-API", log.Lshortfile)
-	var client *Client = new(Client)
-	client.ConfigTLS()
-	params := map[string]interface{}{
-		"amount": amount,
-		"msisdn": msisdn,
-	}
-	params["endpoint"] = "topupservice/service"
-	client.BaseURL = "https://172.16.100.97:8913"
-	client.Logger = logger.Print
+func TopUp(amount float64, msisdn string) (*TopupResponse, error) {
+
 	ctx := context.Background()
-	timeout := 3 * time.Second
+	timeout := 5 * time.Second
 	ctx_timeout, cancel := context.WithTimeout(ctx, timeout)
 
 	defer cancel()
+	endpoint := &TopUpEndpoint{}
+	endpoint = endpoint.SetReceiver(msisdn)
+	endpoint = endpoint.SetAmount(amount)
+	endpoint = endpoint.SetEndpoint("topupservice/service")
 
-	err := client.doRequest(ctx_timeout, result, params)
-	return err
+	result, err := Client.doRequest(ctx_timeout, endpoint)
+	if err != nil {
+		Client.log("Error with sending request by client.", err)
+		panic(err)
+	}
+	topupres, ok := result.(*TopupResponse)
+	if !ok {
+		Client.log("Can not assert client.DoRequest to *TopupResponse")
+		panic("Can not continue. Zombies lying on the way")
+	}
+	return topupres, err
+}
+
+func GetInfo(resellerid string) (*InformationPrincipalResponse, error) {
+	ctx := context.Background()
+	timeout := time.Second * 5
+	ctx_timeout, cancel := context.WithTimeout(ctx, timeout)
+
+	defer cancel()
+	endpoint := &InformationEndpoint{}
+	endpoint.SetID(resellerid)
+	endpoint.SetType("RESELLERID")
+	endpoint.SetEdpoint("topupservice/service")
+
+	result, err := Client.doRequest(ctx_timeout, endpoint)
+	if err != nil {
+		Client.log("Error with sending request by client.", err)
+		panic(err)
+	}
+	infores, ok := result.(*InformationPrincipalResponse)
+	if !ok {
+		Client.log("Can not assert client.DoRequest to *InformationPrincipalResponse")
+		panic("Can not continue. Zombies lying on the way")
+	}
+	return infores, err
+}
+
+func NewClient(file string) *client {
+	var client *client = new(client)
+	var out *os.File
+	func() {
+		o, err := os.OpenFile(file, os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			o = os.Stderr
+		}
+		out = o
+	}()
+	client.BaseURL = "https://172.16.100.97:8913"
+	//client.BaseURL = "http://localhost:8913" //test server
+	logger := log.New(out, "MTN-EVD", log.LstdFlags)
+	client.Logger = logger.Print
+
+	//wire http client
+	client.HTTPClient = http.Client{}
+	client.HTTPClient.Timeout = time.Second * 30
+	client.ConfigTLS()
+	return client
 }

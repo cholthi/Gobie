@@ -12,12 +12,14 @@ import (
 	c "github.com/cholthi/cscartapi/client"
 )
 
+// This package deals with CScart API specific interactions.
+
 const BASE_URL = "https://agoro.co/api.php"
 
 var errorCscartResponse error = errors.New("Error from API:")
 var errorInvalidMethod error = errors.New("Error: Invalid Method")
 
-var client *c.Client = c.NewClient("", "")
+var client *c.Client = c.NewClient("chol@dmarkmobile.com", "r476310Y887705A4648V2o7BZ3R818cP")
 
 type CscartResponse struct {
 	Data interface{}

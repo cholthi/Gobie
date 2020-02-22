@@ -1,6 +1,7 @@
 package client
 
 import (
+	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"log"
@@ -8,6 +9,9 @@ import (
 	"time"
 )
 
+// A client struct is an http client abstraction.
+// it utilizes behind the scene the http. Client struct object
+// It understand API specific semantics particular to this project.
 type Client struct {
 	login  string
 	apiKey string
@@ -23,7 +27,9 @@ func (c *Client) SetApiKey(key string) {
 }
 
 func initClient() *http.Client {
+	transport := http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	client := &http.Client{Timeout: 30 * time.Second}
+	client.Transport = &transport
 	return client
 }
 
