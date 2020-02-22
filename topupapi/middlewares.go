@@ -31,7 +31,7 @@ func AuthMiddleware(logger log.Logger) Middleware {
 			}
 			apikey := r.Header.Get("api-key")
 
-			if apikey == "ge0pass" {
+			if apikey == "" {
 				h.ServeHTTP(res, r)
 				return
 			}

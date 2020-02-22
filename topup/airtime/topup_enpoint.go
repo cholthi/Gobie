@@ -37,14 +37,14 @@ func (info *TopUpEndpoint) GetEndpoint() string {
 
 func (tue *TopUpEndpoint) PrepareRequest() ([]byte, error) {
 	timeout := 5 * time.Microsecond
-	user := User{ID: "RES0000059747", Type: "RESELLERUSER", RequestType: "DMark"}
+	user := User{ID: "", Type: "RESELLERUSER", RequestType: "DMark"}
 	//user := User{ID: "211925415377", Type: "RESELLERUSER", RequestType: "DMark"}
 	user.XMLName = xml.Name{Local: "initiatorPrincipalId"}
 	ref := randomString(8)
-	context := Context{"WEBSERVICE", "DMARK", timeout, user, "DM@rk321", ref, "dmark topup subscriber account"}
+	context := Context{"WEBSERVICE", "DMARK", timeout, user, "", ref, "dmark topup subscriber account"}
 	account := new(Account)
 	account.XMLName = xml.Name{Local: "senderAccountSpecifier"}
-	account.ID = "211925415377"
+	account.ID = ""
 	account.Type = "RESELLER"
 	subscriber := User{XMLName: xml.Name{Local: "topupPrincipalId"}, ID: tue.receiver, Type: "SUBSCRIBERMSISDN"}
 	sub_account := new(Account)
