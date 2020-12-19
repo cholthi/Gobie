@@ -28,9 +28,9 @@ type client struct {
 	Logger     Log
 }
 
-func init() {
+/*func init() {
 	Client = NewClient("/var/log/airtime.log")
-}
+}*/
 
 type Log func(...interface{})
 
@@ -44,6 +44,7 @@ func (c *client) doRequest(ctx context.Context, endpoint Endpoint) (interface{},
 	body, err := endpoint.PrepareRequest()
 	if err != nil {
 		c.log("Error marshalling request", err)
+		return nil, err
 	}
 	// make context cancellable http call
 	url := c.Endpoint(endpoint.GetEndpoint())
@@ -100,13 +101,13 @@ func (c *client) Endpoint(endpoint string) string {
 }
 
 func (c *client) ConfigTLS() {
-	cert, err := tls.LoadX509KeyPair("/home/ubuntu/certs/cert.pem", "/home/ubuntu/certs/key.pem")
+	/*cert, err := tls.LoadX509KeyPair("/home/ubuntu/certs/cert.pem", "/home/ubuntu/certs/key.pem")
 	if err != nil {
 		c.log("Error:", err)
 		panic(err)
-	}
+	}*/
 	tlsConfig := &tls.Config{
-		Certificates:       []tls.Certificate{cert},
+		//Certificates:       []tls.Certificate{cert},
 		InsecureSkipVerify: true,
 	}
 	//tlsConfig.InsecureSkipVerify = false
@@ -122,7 +123,7 @@ func TopUp(amount float64, msisdn string) (*TopupResponse, error) {
 
 	ctx := context.Background()
 	timeout := 5 * time.Second
-	ctx_timeout, cancel := context.WithTimeout(ctx, timeout)
+	timeout_ctx, cancel := context.WithTimeout(ctx, timeout)
 
 	defer cancel()
 	endpoint := &TopUpEndpoint{}
@@ -130,7 +131,7 @@ func TopUp(amount float64, msisdn string) (*TopupResponse, error) {
 	endpoint = endpoint.SetAmount(amount)
 	endpoint = endpoint.SetEndpoint("topupservice/service")
 
-	result, err := Client.doRequest(ctx_timeout, endpoint)
+	result, err := Client.doRequest(timeout_ctx, endpoint) //watch out. that is a global variable
 	if err != nil {
 		Client.log("Error with sending request by client.", err)
 		panic(err)
@@ -146,7 +147,7 @@ func TopUp(amount float64, msisdn string) (*TopupResponse, error) {
 func GetInfo(resellerid string) (*InformationPrincipalResponse, error) {
 	ctx := context.Background()
 	timeout := time.Second * 5
-	ctx_timeout, cancel := context.WithTimeout(ctx, timeout)
+	timeout_ctx, cancel := context.WithTimeout(ctx, timeout)
 
 	defer cancel()
 	endpoint := &InformationEndpoint{}
@@ -154,7 +155,7 @@ func GetInfo(resellerid string) (*InformationPrincipalResponse, error) {
 	endpoint.SetType("RESELLERID")
 	endpoint.SetEdpoint("topupservice/service")
 
-	result, err := Client.doRequest(ctx_timeout, endpoint)
+	result, err := Client.doRequest(timeout_ctx, endpoint)
 	if err != nil {
 		Client.log("Error with sending request by client.", err)
 		panic(err)
@@ -177,7 +178,7 @@ func NewClient(file string) *client {
 		}
 		out = o
 	}()
-	client.BaseURL = "https://172.16.100.97:8913"
+	//client.BaseURL = "https://172.16.100.97:8913"
 	//client.BaseURL = "http://localhost:8913" //test server
 	logger := log.New(out, "MTN-EVD", log.LstdFlags)
 	client.Logger = logger.Print

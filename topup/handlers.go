@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/cholthi/topup/model"
+	"github.com/cholthi/topupapi/model"
 )
 
 func HandleTopUp(res http.ResponseWriter, r *http.Request) {
@@ -46,23 +46,6 @@ func HandleTopUp(res http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(res)
 	enc.Encode(&resp)
 	return
-	// log and end request
-}
-
-func GetToken(res http.ResponseWriter, r *http.Request) {
-	// unmarshal request
-	// validate request
-	// authenticate request user
-	//issue token with expiry for valid users
-	// prepare response (username, token)
-	//log and end request
-}
-
-func CreateUser(res http.ResponseWriter, r *http.Request) {
-	// unmarshal Request
-	// validate request
-	// create user in db
-	// prepare response (user id of created user)
 	// log and end request
 }
 

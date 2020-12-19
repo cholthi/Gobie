@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -15,7 +18,7 @@ const (
 )
 
 var logfile string = "/root/dstv.log"
-var csvdatabase string = "/root/MGURUSH_CUSTOMER_SUBSCRIBTION_UAT.csv"
+var csvdatabase string = "/root/MGURUSH_CUSTOMER_SUBSCRIBTION.csv"
 var logger log.Logger = NewLogger(logfile)
 
 var store Store = NewCsvStore(csvdatabase)
@@ -30,7 +33,7 @@ func NewLogger(file string) log.Logger {
 	logger := log.Logger{}
 	logger.SetOutput(output)
 	logger.SetPrefix("dstv")
-	logger.SetFlags(log.Lshortfile)
+	logger.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	return logger
 }
 
@@ -44,30 +47,24 @@ func main() {
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
 		Handler:      authenticateMiddleware(mux),
-		Addr:         ":8080",
-		//TLSConfig:    configTLS(),
+		Addr:         ":4443",
+		TLSConfig:    configTLS(),
 	}
 
-	logger.Fatal(server.ListenAndServe())
+	logger.Fatal(server.ListenAndServeTLS("/etc/ssl/ssl.crt/agoro_co.crt", "/etc/ssl/ssl.key/agoro.key"))
 }
 
-/*func configTLS() *tls.Config {
+func configTLS() *tls.Config {
 	var config *tls.Config = new(tls.Config)
-	CA_bundle, err := ioutil.ReadFile("/etc/ssl/certs/agoro_co.ca-bundle")
+	CA_bundle, err := ioutil.ReadFile("/etc/ssl/ssl.crt/agoro_co.ca-bundle")
 	if err != nil {
 		logger.Panic(err)
 	}
 	CApool := x509.NewCertPool()
-	CApool.AppendCertsFromPEM(CA_bundle)
-	logger.Println("CA cert loaded")
-	config.ClientCAs = CApool
-	config.GetCertificate = func(info *tls.ClientHelloInfo) (certificate *tls.Certificate, e error) {
-		c, err := tls.LoadX509KeyPair("/etc/ssl/certs/agoro_co.crt", "/etc/ssl/private/agoro.co.key")
-		if err != nil {
-			logger.Printf("Error loading key pair: %v\n", err)
-			return nil, err
-		}
-		return &c, nil
+	if ok := CApool.AppendCertsFromPEM(CA_bundle); !ok {
+		logger.Panicln("Failed to parse certificate authority file")
 	}
+	logger.Println("CA cert loaded")
+	config.RootCAs = CApool
 	return config
-}*/
+}

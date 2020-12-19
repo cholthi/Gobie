@@ -45,8 +45,8 @@ func topup(rw http.ResponseWriter, r *http.Request) {
 <ns2:requestTopupResponse xmlns:ns2="http://external.interfaces.ers.seamless.com/">
 <return>
 <ersReference>2015061114441812901004879</ersReference>
-<resultCode>0</resultCode>
-<resultDescription>SUCCESS</resultDescription>
+<resultCode>11</resultCode>
+<resultDescription>REJECTED_AMOUNT</resultDescription>
 <requestedTopupAmount>
 <currency>SSP</currency>
 <value>1</value>

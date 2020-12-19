@@ -5,23 +5,11 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/cholthi/topup/model"
+	"github.com/cholthi/topupapi/model"
 	"github.com/cholthi/topup/airtime"
 )
 
-func errorResponse(res http.ResponseWriter, code int, message string) {
-	re := struct {
-		Error string `json:"error"`
-	}{Error: message}
 
-	body, err := json.Marshal(re)
-	if err != nil {
-		body = []byte(`{error:"` + message + `"}`)
-	}
-	res.WriteHeader(code)
-	res.Write(body)
-
-}
 
 func validateTopUpRequestData(r Request) error {
 	var err error = nil

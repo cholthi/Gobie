@@ -11,7 +11,8 @@ const (
 )
 
 var currency string = "ssp"
-var rate float64 = 320.0
+
+const rate float64 = 550.0
 
 type Package struct {
 	Name     string  `json:"package"`

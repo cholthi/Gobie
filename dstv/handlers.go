@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+
+	"github.com/cholthi/dstv/mailc"
 )
 
 const apikey = "test"
@@ -83,7 +85,7 @@ func apiRecharge(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		//notify
-		/*	go func() {
+		go func() {
 			attachment := csvdatabase
 			mailer := mailc.NewSMTP(logger, SMTP_HOST, SMTP_PASSWORD, SMTP_USERNAME, SMTP_PORT)
 			addr := []string{"swangin@dstvsouthsudan.com", "awak@dstvsouthsudan.com", "kevin@dstvsouthsudan.com", "anyang@targetmedia.biz"}
@@ -92,7 +94,7 @@ func apiRecharge(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				logger.Panicln(err)
 			}
-		}() */
+		}()
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"error":false,"message":"recharge OK"}`))

@@ -36,10 +36,10 @@ func (info *InformationEndpoint) GetEndpoint() string {
 
 func (info *InformationEndpoint) PrepareRequest() ([]byte, error) {
 	timeout := 5 * time.Microsecond
-	user := User{ID: "", Type: "RESELLERUSER", RequestType: "DMark"}
+	user := User{ID: "RES0000059747", Type: "RESELLERUSER", RequestType: "WEB"}
 	user.XMLName = xml.Name{Local: "initiatorPrincipalId"}
 	ref := randomString(8)
-	context := Context{"WEBSERVICE", "DMARK", timeout, user, "", ref, "dmark topup subscriber account"}
+	context := Context{"WEBSERVICE", "DMARK", timeout, user, "DM@rk321", ref, "dmark topup subscriber account"}
 	acc_owner := User{ID: info.resellerID, Type: info.resellerType}
 	acc_owner.XMLName = xml.Name{Local: "principalId"}
 

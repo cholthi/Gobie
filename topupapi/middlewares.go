@@ -3,7 +3,10 @@ package main
 import (
 	"log"
 	"net/http"
+	"regexp"
 )
+
+var bearerRegexp = regexp.MustCompile(`^(?:B|b)earer (\S+$)`)
 
 type Middleware func(http.Handler) http.Handler
 
@@ -21,13 +24,44 @@ func LoggingMiddleware(logger log.Logger) Middleware {
 	}
 }
 
+func requireAthenticationMiddleware(logger log.Logger) Middleware {
+	return func(handler http.Handler) http.Handler {
+		return http.HandlerFunc(func(res http.ResponseWriter, r *http.Request) {
+			bearer, err := extractBearerToken(r)
+			if err != nil {
+				errorResponse(res, http.StatusUnauthorized, err)
+				logger.Println(err)
+				return
+			}
+			token, err := parseJTWToken(bearer)
+
+			if err != nil {
+				errorResponse(res, http.StatusUnauthorized, err)
+				logger.Println(err)
+				return
+			}
+			ctx, err := addUserToContext(r.Context(), token)
+			if err != nil {
+				errorResponse(res, http.StatusUnauthorized, err)
+				logger.Println(err)
+				return
+			}
+
+			r = r.WithContext(ctx)
+			handler.ServeHTTP(res, r)
+			return
+
+		})
+	}
+}
+
 func AuthMiddleware(logger log.Logger) Middleware {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(res http.ResponseWriter, r *http.Request) {
 
 			errRes := TopUpResponse{
 				StatusCode:    20,
-				StatusMessage: "AUTHENTICATION_FAILED",
+				StatusMessage: "AUTHENTICATION_REQUIRED",
 			}
 			apikey := r.Header.Get("api-key")
 

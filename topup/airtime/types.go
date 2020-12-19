@@ -59,7 +59,7 @@ type TopUpRequest struct {
 type TopupResponse struct {
 	XMLName      xml.Name `xml:"Envelope"`
 	Reference    string   `xml:"Body>requestTopupResponse>return>ersReference"`
-	ResultCode   int      `xml:"Body>requestTopupResponse>return>ResultCode"`
+	ResultCode   int      `xml:"Body>requestTopupResponse>return>resultCode"`
 	Status       string   `xml:"Body>requestTopupResponse>return>resultDescription"`
 	SenderMsisdn string   `xml:"Body>requestTopupResponse>return>topupPrincipal>principalId>id"`
 	Balance      string   `xml:"Body>requestTopupResponse>return>senderPrincipal>accounts>account>balance>value"`
@@ -103,6 +103,7 @@ func (err *TopupResponse) Code() int {
 	return err.ResultCode
 }
 
+// Implements ErrorResponse interface
 func (err *InformationPrincipalResponse) Error() string {
 
 	return fmt.Sprintf("%d:%s", err.ResultCode, err.Status)

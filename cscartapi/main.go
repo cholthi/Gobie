@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/cholthi/cscartapi/api"
@@ -26,6 +27,9 @@ var category string
 var vendor string
 var file string
 
+var exchangeRate float64 = 36
+var margin float64 = 0.5
+
 var wg sync.WaitGroup = sync.WaitGroup{}
 
 func main() {
@@ -35,6 +39,8 @@ func main() {
 	flag.StringVar(&category, "category", "", "Provide category to add products to on cscart")
 	flag.StringVar(&vendor, "vendor", "1", "Company id to add products under")
 	flag.StringVar(&file, "file", "", "inventory file containing products to upload")
+	flag.Float64Var(&exchangeRate, "rate", 1, "the Rate to any currency to UGX")
+	flag.Float64Var(&margin, "margin", 0.3, "margin as a percentage of products price")
 	flag.Parse()
 
 	var products []Work = make([]Work, 0)
@@ -123,9 +129,10 @@ func prepareOptions(w Work, res *api.CscartResponse, name string) string {
 
 func prepareBody(work Work) string {
 	var params map[string]interface{} = make(map[string]interface{})
-	price, _ := strconv.ParseFloat(work.Amount, 32)
-
-	params["price"] = ((price * 1) + (price * 0.70))
+	Sprice := strings.Trim(work.Amount, " ")
+	price, _ := strconv.ParseFloat(Sprice, 64)
+	price = price * exchangeRate                 // convert to ugx shs
+	params["price"] = (price + (price * margin)) // add the margin as a percentage of a product price
 	params["company_id"] = vendor
 	params["product"] = work.Product
 	params["full_description"] = work.Description
@@ -133,7 +140,7 @@ func prepareBody(work Work) string {
 	params["amount"] = 20
 	params["main_category"] = category
 	params["category_ids"] = []string{category}
-	//params["product_features"] = map[string]map[string]string{"18": {"feature_type": "E", "value": "Huawei"}}
+	params["product_features"] = map[string]map[string]string{"285": {"feature_type": "T", "value": "Huddah"}}
 	if len(work.Imagepairs) > 0 {
 		params["main_pair"] = map[string]map[string]string{"detailed": {"http_image_path": work.Imagepairs[0], "image_path": work.Imagepairs[0]}}
 	}
