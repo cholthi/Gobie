@@ -21,6 +21,7 @@ type ScrapeRequest struct {
 	Category  string `json:"category"`
 	NoRequest int    `json:"request_no"`
 	Replace   string `json:"replace_text,omitempty"`
+	FileName string  `json::file_name"`
 }
 
 type Response struct {
@@ -124,7 +125,7 @@ func scrape(rw http.ResponseWriter, r *http.Request) {
 	host := hosts[country]
 	req.Host = host
 	req.Category = r.FormValue("category")
-	//req.File = r.FormValue("file")
+	req.FileName = r.FormValue("file")
 	req.Replace = r.FormValue("replace")
 	no, err := strconv.Atoi(r.FormValue("request_no"))
 	if err != nil {
@@ -155,7 +156,7 @@ func scrape(rw http.ResponseWriter, r *http.Request) {
 		}
 		l := len(products)
 		//sl := strconv.Itoa(l)
-		data := fmt.Sprintf(`{"success": true, "number":%d, "tempFile":%q}`, l, item.Inventory.Name())
+		data := fmt.Sprintf(`{"success": true, "number":%d, "file":%q}`, l, item.Inventory.Name())
 		logger.Println(item.Inventory.Name())
 		item.Inventory.Close()
 		rw.Header().Set("Content-Type", "application/json")
@@ -175,7 +176,7 @@ func uploadToserver(rw http.ResponseWriter, r *http.Request) {
 	vendor := r.FormValue("vendor")
 	margin := r.FormValue("margin")
 	rate := r.FormValue("rate")
-	file := r.FormValue("tempFile")
+	file := r.FormValue("file")
 	args := []string{"--category", category, "--vendor", vendor, "--file", file, "--rate", rate, "--margin", margin}
 	cmd := exec.Command("./cscart", args...)
 	cmd.Stdout = logger.Writer()
@@ -203,7 +204,7 @@ func reqToItem(req ScrapeRequest) (*scrapper.ScrapeItem, error) {
 	ret.Host = u
 	ret.Category = req.Category
 
-	fobj, err := ioutil.TempFile("/tmp/agoro", "scrapped")
+	fobj, err := os.OpenFile(req.FileName, os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return nil, err
 	}

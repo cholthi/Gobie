@@ -57,6 +57,10 @@
     <input type="text" class="form-control" id="formGroupExampleInput2" data-bind= "value: replace" placeholder="">
   </div>
   <div class="form-group">
+    <label for="formGroupExampleInputfile">Scrape File</label>
+    <input type="text" class="form-control" id="formGroupExampleInputfile" data-bind= "value: file" placeholder="./scrapped.json">
+  </div>
+  <div class="form-group">
     <label for="formGroupExampleInput2">Number of Products to Scrape</label>
     <input type="number" class="form-control" id="formGroupExampleInput2" data-bind= "value: noRequests">
   </div>
@@ -85,7 +89,7 @@
             <input type="input" class="form-control" id="margin" data-bind="value: margin">
           </div>
           <div class="form-group">
-            <input type="hidden" class="form-control" data-bind= "value: tempFile" >
+            <input type="hidden" class="form-control" data-bind= "value: file" >
           </div>
           <button type="submit" class="btn btn-primary mb-2">Upload to Shop</button>
         </form>
@@ -154,7 +158,6 @@
        uploadSuccess : ko.observable(false),
        scrappedSuccess : ko.observable(false),
        disableButton : ko.observable(false),
-       tempFile:       ko.observable(""),
 
        scrape : function() {
          var data = {
@@ -162,6 +165,7 @@
                       category: this.categorytoScrape(),
                       request_no: this.noRequests(),
                       replace: this.replace(),
+                      file: this.file(),
          }
           console.log(data)
          //var jsond = ko.toJSON(data)
@@ -174,7 +178,7 @@
               that.scrappedSuccess(true)
              that.scrappedFinished(true)
              that.noScrapped(response.number)
-             that.tempFile(response.tempFile)
+             that.file(response.file)
               return
            }
             that.scrappedFinished(true)
@@ -187,7 +191,7 @@
                       vendor: this.vendorID(),
                       rate:  this.rate(),
                       margin: this.margin(),
-                      tempFile: this.tempFile(),
+                      file: this.file(),
          }
          //var jsond = ko.toJSON(data)
          var that = this
